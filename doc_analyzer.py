@@ -10,44 +10,78 @@ class FieldType(Enum):
     KEY_IGNORE = 'key_ignore'
 
 
-class DocAnalyzer:
+class DocAnalyzer(ABC):
+    """
+    The is placehoder for functions required to analyze document contents
+    """
+
     def __init__(self):
         pass
 
     @abstractmethod
-    def get_field_type(self, field_name: string) -> FieldType:
+    def doc_ignored(self, doc: dict) -> bool:
         pass
 
     @abstractmethod
-    def get_doc_classifier(self, doc: dict) -> string:
+    def partition_fields_by_type(self, doc: dict) -> dict:
+        """
+        create Map (field type => list of fields of that type)
+        :param doc:
+        :return: enum FieldType
+        """
+        pass
+
+    @abstractmethod
+    def get_classifier(self, doc: dict) -> string:
+        """
+        Get classification for the document
+        :param doc:
+        :return: string
+        """
         pass
 
 
 class AnalyzedDocument:
+    """
+    Analyzed document is a wrapper the holds the document with analyzed information about its content
+    """
+
     def __init__(self,
                  doc: dict,
                  analyzer: DocAnalyzer):
-        self._doc = doc
+        self._ignored = analyzer.doc_ignored(doc)
+        if not self._ignored:
+            self._classifier = analyzer.get_classifier(doc)
+            self._fields_partition = analyzer.partition_fields_by_type(doc)
+            for key in self._fields_partition.keys():
+                self._fields_partition[key].sort()
+            self._key = '#'.join(map(lambda x: x + '_' + str(doc[x]), self._fields_partition[FieldType.PART_OF_KEY]))
+            self._doc = doc
 
-        self._classifier = analyzer.get_doc_classifier(doc)
-        self._field_lists = {}
-        for field_type in FieldType:
-            self._field_lists[field_type] = []
-        for key in doc.keys():
-            self._field_lists[analyzer.get_field_type(key)].append(key)
-        for key in self._field_lists.keys():
-            self._field_lists[key].sort()
-
-        self._key = '#'.join(map(lambda x: x + '_' + str(doc[x]), self._field_lists[FieldType.PART_OF_KEY]))
-
-    def get_key(self):
+    def get_key(self) -> string:
+        """
+        get the key of the document
+        :return: string
+        """
         return self._key
 
-    def get_key_lists(self):
-        return self._field_lists
+    def get_field_names_partitioned_by_field_type(self) -> dict:
+        """
+        returns dictionary of lists of field names partitioned by field types
+        :return: map (FieldType -> list of field names of that type)
+        """
+        return self._fields_partition
 
     def get_classifier(self):
+        """
+        return the document classifier - document must have one classifier
+        :return:
+        """
         return self._classifier
 
     def get_doc(self):
+        """
+        return the original document
+        :return: document
+        """
         return self._doc
