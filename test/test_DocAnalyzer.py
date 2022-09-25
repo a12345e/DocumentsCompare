@@ -2,27 +2,28 @@ import unittest
 import string
 from abc import ABC
 
-from doc_analyzer import DocAnalyzer, FieldType, AnalyzedDocument
+from doc_analyzer import DocAnalyzer, FieldImportance, AnalyzedDocument
 
 
 class TheDocAnalyzer(DocAnalyzer):
 
-    def doc_ignored(self, doc: dict) -> bool:
-        return False
-
-    def partition_fields_by_type(self, doc: string) -> FieldType:
-        if doc.startswith(FieldType.KEY_IGNORE.name):
-            return FieldType.KEY_IGNORE
-        if doc.startswith(FieldType.VALUE_IGNORE.name):
-            return FieldType.VALUE_IGNORE
-        if doc.startswith(FieldType.VALUE_RELEVANT.name):
-            return FieldType.VALUE_RELEVANT
-        return FieldType.PART_OF_KEY
-
-    def get_classifier(self, doc: dict) -> string:
+    def _get_classifier(self, doc: dict) -> string:
         if 'classifier' in doc:
             return doc['classifier']
         return 'unclassified'
+
+    def _get_field_importance(self, doc: dict, field_name: string) -> FieldImportance:
+        if doc.startswith(FieldImportance.FIELD_NAME_RELEVANT.name):
+            return FieldImportance.FIELD_VALUE_RELEVANT
+        elif doc.startswith(FieldImportance.FIELD_VALUE_RELEVANT.name):
+            return FieldImportance.FIELD_VALUE_RELEVANT
+        elif doc.startswith(FieldImportance.FIELD_PART_OF_KEY.name):
+            return FieldImportance.FIELD_PART_OF_KEY
+        else:
+            return FieldImportance.FIELD_NOT_RELEVANT
+
+    def _doc_ignored(self, doc: dict) -> bool:
+        return False
 
 
 class TestDocAnalyzer(unittest.TestCase):
@@ -34,11 +35,11 @@ class TestDocAnalyzer(unittest.TestCase):
 
     def test_the_analyzer_field_typing(self):
         analyzer = TheDocAnalyzer()
-        self.assertEqual(analyzer.partition_fields('a'), FieldType.PART_OF_KEY)
-        self.assertEqual(analyzer.partition_fields('PART_OF_KEY_x'), FieldType.PART_OF_KEY)
-        self.assertEqual(analyzer.partition_fields('KEY_IGNORE'), FieldType.KEY_IGNORE)
-        self.assertEqual(analyzer.partition_fields('VALUE_IGNORE_y'), FieldType.VALUE_IGNORE)
-        self.assertEqual(analyzer.partition_fields('VALUE_RELEVANT_u'), FieldType.VALUE_RELEVANT)
+        self.assertEqual(analyzer.field_key_relevant({'a', 'a'}, ''), FieldImportance.FIELD_PART_OF_KEY)
+        self.assertEqual(analyzer.partition_fields('PART_OF_KEY_x'), FieldImportance.FIELD_PART_OF_KEY)
+        self.assertEqual(analyzer.partition_fields('KEY_IGNORE'), FieldImportance.KEY_IGNORE)
+        self.assertEqual(analyzer.partition_fields('VALUE_IGNORE_y'), FieldImportance.VALUE_IGNORE)
+        self.assertEqual(analyzer.partition_fields('VALUE_RELEVANT_u'), FieldImportance.FIELD_VALUE_RELEVANT)
 
     def test_analyze_document(self):
         analyzer = TheDocAnalyzer()
@@ -56,13 +57,13 @@ class TestDocAnalyzer(unittest.TestCase):
             'VALUE_RELEVANT_z': None
         }, analyzer)
         self.assertEqual(analyzed_document.get_classifier(), 'classifier_x')
-        self.assertEqual(set(analyzed_document.get_key_partitions_lists()[FieldType.KEY_IGNORE]),
+        self.assertEqual(set(analyzed_document.get_key_partitions_lists()[FieldImportance.KEY_IGNORE]),
                          set(['KEY_IGNORE_y', 'KEY_IGNORE_x']))
-        self.assertEqual(set(analyzed_document.get_key_partitions_lists()[FieldType.PART_OF_KEY]),
+        self.assertEqual(set(analyzed_document.get_key_partitions_lists()[FieldImportance.FIELD_PART_OF_KEY]),
                          set(['PART_OF_KEY_y', 'PART_OF_KEY_x', 'a', 'classifier']))
-        self.assertEqual(set(analyzed_document.get_key_partitions_lists()[FieldType.VALUE_IGNORE]),
+        self.assertEqual(set(analyzed_document.get_key_partitions_lists()[FieldImportance.VALUE_IGNORE]),
                          set(['VALUE_IGNORE_x', 'VALUE_IGNORE_y']))
-        self.assertEqual(set(analyzed_document.get_key_partitions_lists()[FieldType.VALUE_RELEVANT]),
+        self.assertEqual(set(analyzed_document.get_key_partitions_lists()[FieldImportance.FIELD_VALUE_RELEVANT]),
                          set(['VALUE_RELEVANT_x', 'VALUE_RELEVANT_y', 'VALUE_RELEVANT_z']))
         self.assertEqual(analyzed_document.get_key(),'PART_OF_KEY_x_part_of_key_x_value#PART_OF_KEY_y_part_of_key_y_value#a_a#classifier_classifier_x')
 

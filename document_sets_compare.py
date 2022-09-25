@@ -1,4 +1,5 @@
-from doc_analyzer import DocAnalyzer, FieldType, AnalyzedDocument
+from doc_analyzer import DocAnalyzer, FieldImportance, AnalyzedDocument
+import string
 
 _TESTED = 'tested'
 _EXPECTED = 'expected'
@@ -6,6 +7,8 @@ _COMMON = 'common'
 _DIFF = 'diff'
 _COUNT = 'count'
 _CLASSIFIER = 'group'
+_NAMES = 'names'
+
 """
 we separate for classifiers.
 Then we start compare content per classifier
@@ -28,6 +31,36 @@ Then we start compare content per classifier
         We make diff of those keys
 """
 
+def compue_key_value_distribution_per_field_type(docs: [],field_names: set):
+
+def compue_key_value_distribution_per_classifier(docs: [AnalyzedDocument]):
+
+    field_types_partition = {}
+    for doc in docs:
+        field_types_partition = doc.
+        for field_name in field_types_partitions[field_type]:
+            if field_name not in field_values[field_type]:
+                field_values[field_type][field_name] = set([doc.get_doc()[field_name]])
+            else:
+                field_values[field_type][field_name].add(doc.get_doc()[field_name])
+
+
+def compue_key_value_distribution(docs: [dict], classifier, min_field_importance: FieldImportance,analyzer: DocAnalyzer):
+    analyzed_docs: [AnalyzedDocument] = \
+        map(lambda x: AnalyzedDocument(x, analyzer),
+            filter(lambda x: x.get_classifier() == classifier, docs))
+    analyzed_docs_by_classifier = {}
+    report = {}
+    field_values = {}
+    for doc in analyzed_docs:
+        field_types_partitions = analyzer.partition_fields_by_type(doc)
+        for field_name in field_types_partitions[field_type]:
+            if not field_name in field_values[field_type]:
+                field_values[field_type][field_name] = set([doc.get_doc()[field_name]])
+            else:
+                field_values[field_type][field_name].add(doc.get_doc()[field_name])
+
+
 class DocumentSetsComparator:
     """
     We create analyzed documents partitioned by (classifier, key)
@@ -38,18 +71,16 @@ class DocumentSetsComparator:
         self._tested_partition = self._partition_docs(tested_docs, analyzer)
         self._expected_partition = self._partition_docs(expected_docs, analyzer)
         self._diff = \
-            { _CLASSIFIER:
-            {
-             _COMMON: len(set(self._tested_partition.keys()).intersection(set(self._expected_partition.keys()))),
-              _TESTED: len(set(self._tested_partition.keys()).difference(set(self._expected_partition.keys()))),
-             _EXPECTED: len(set(self._expected_partition.keys()).difference(set(self._tested_partition.keys())))
-            }}
-
+            {_CLASSIFIER:
+                {
+                    _COMMON: len(set(self._tested_partition.keys()).intersection(set(self._expected_partition.keys()))),
+                    _TESTED: len(set(self._tested_partition.keys()).difference(set(self._expected_partition.keys()))),
+                    _EXPECTED: len(set(self._expected_partition.keys()).difference(set(self._tested_partition.keys())))
+                }}
 
     @staticmethod
     def compare_classifier(self, tested_partitioned_by_key: dict, expected_partitioned_by_key: dict):
         summary_by_keys = self.compare_keys(tested_partitioned_by_key, expected_partitioned_by_key)
-
 
     @staticmethod
     def compare_keys(self, tested: dict, expected: dict):
