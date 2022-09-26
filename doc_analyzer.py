@@ -18,14 +18,6 @@ class DocAnalyzer(ABC):
     def __init__(self):
         pass
 
-    def doc_ignored(self, doc: dict):
-        if not self._doc_ignored(doc):
-            list_key_fields = [x for x in doc.keys() if self._get_field_importance(doc, x).value
-                        <= AttributeImportance.PART_OF_DOC_KEY.value]
-            return len(list_key_fields) == 0
-        else:
-            return False
-
     def get_key(self, doc: dict):
         key_fields = [x for x in doc.keys() if self._get_field_importance(doc, x).value
                       <= AttributeImportance.PART_OF_DOC_KEY.value]
@@ -45,8 +37,8 @@ class DocAnalyzer(ABC):
                self._get_field_importance(doc, field_name).value <= AttributeImportance.EXISTENCE_RELEVANT.value
 
     @abstractmethod
-    def _doc_ignored(self, doc: dict) -> bool:
-        return False
+    def doc_ignored(self, doc: dict) -> bool:
+        pass
 
     @abstractmethod
     def _get_field_importance(self, doc: dict, field_name: string) -> AttributeImportance:
@@ -95,8 +87,14 @@ class DocsAttributesDistribution:
                 'attributes_usage': self._fields_usage_count,
                 'attributes_distribution': self._fields_value_distribution}
 
+    def __repr__(self):
+        return self.get()
 
-class AnalyzedDocumentsSet:
+    def __str__(self):
+        return str(self.get())
+
+
+class AnalyzeDocuments:
     """
     Analyzed document is a wrapper the holds the document with analyzed information about its content
     """
@@ -105,34 +103,51 @@ class AnalyzedDocumentsSet:
         self._analyzer = analyzer
         self._count_docs = 0
         self._count_docs_ignored = 0
+        self._count_docs_ignored_because_missing_key = 0
         self._report_by_classifier = {}
 
     def add(self, doc: dict):
-        self._count_docs = self._count_docs +1
+        self._count_docs = self._count_docs + 1
         if self._analyzer.doc_ignored(doc):
             self._count_docs_ignored = self._count_docs_ignored + 1
             return
+        if len(self._analyzer.get_key(doc)) == 0:
+            self._count_docs_ignored_because_missing_key = self._count_docs_ignored_because_missing_key + 1
+            return
 
         classifier = self._analyzer.get_classifier(doc)
-        key = self._analyzer.get_key(doc)
         if classifier not in self._report_by_classifier:
             self._report_by_classifier[classifier] = {
                 'fields': DocsAttributesDistribution(self._analyzer),
                 'doc_keys': {}
             }
-
         report = self._report_by_classifier[classifier]
         report['fields'].add(doc)
         doc_for_key = {}
-        for key, value in doc:
+        for key, value in doc.items():
             if not self._analyzer.doc_uniqueness_relevant(doc, key):
                 doc_for_key[key] = value
+        key = self._analyzer.get_key(doc)
         if key not in report['doc_keys'].keys():
-            report['doc_keys'][key] = {
-                'count_docs': 0,
-                'fields': DocsAttributesDistribution(self._analyzer)
-            }
-        report['doc_keys'][key]['fields'].add(doc_for_key)
+            report['doc_keys'][key] = DocsAttributesDistribution(self._analyzer)
+        report['doc_keys'][key].add(doc_for_key)
 
-    def get_report(self):
-        return self._report_by_classifier
+    def get(self):
+        report = {}
+        for classifier in self._report_by_classifier.keys():
+            result = {'fields_distribution': self._report_by_classifier[classifier]['fields'].get(), 'doc_keys': {}}
+            for key in self._report_by_classifier[classifier]['doc_keys'].keys():
+                result['doc_keys'][key] = self._report_by_classifier[classifier]['doc_keys'][key].get()
+            report[classifier] = result
+
+        return {
+                    'count_docs': self._count_docs,
+                    'count_docs_ignore' : self._count_docs_ignored,
+                    'analyzed_documents': report
+        }
+
+    def __repr__(self):
+        return self.get()
+
+    def __str__(self):
+        return str(self.get())
