@@ -61,6 +61,11 @@ class DocAnalyzer(ABC):
 
 
 class DocsAttributesDistribution:
+    class Result(Enum):
+        DOCS_COUNT = 'docs_count'
+        FIELDS_USAGE = 'fields_usage'
+        FIELD_VALUES = 'field_values'
+
     def __init__(self, analyzer: DocAnalyzer):
         self._fields_value_distribution = {}
         self._fields_usage_count = {}
@@ -83,9 +88,11 @@ class DocsAttributesDistribution:
                         self._fields_value_distribution[field_name].add(doc[field_name])
 
     def get(self):
-        return {'count_docs': self._count_docs,
-                'attributes_usage': self._fields_usage_count,
-                'attributes_distribution': self._fields_value_distribution}
+        return {
+            self.Result.DOCS_COUNT.value: self._count_docs,
+            self.Result.FIELDS_USAGE.value: self._fields_usage_count,
+            self.Result.FIELD_VALUES: self._fields_value_distribution
+        }
 
     def __repr__(self):
         return self.get()
@@ -99,14 +106,19 @@ class AnalyzeDocuments:
     Analyzed document is a wrapper the holds the document with analyzed information about its content
     """
 
-    def __init__(self, analyzer: DocAnalyzer):
+    def __init__(self, analyzer: DocAnalyzer, classifier: string):
+        self._report = None
         self._analyzer = analyzer
+        self._classifier = classifier
         self._count_docs = 0
         self._count_docs_ignored = 0
         self._count_docs_ignored_because_missing_key = 0
         self._report_by_classifier = {}
 
     def add(self, doc: dict):
+        classifier = self._analyzer.get_classifier(doc)
+        if classifier != self._classifier:
+            return
         self._count_docs = self._count_docs + 1
         if self._analyzer.doc_ignored(doc):
             self._count_docs_ignored = self._count_docs_ignored + 1
@@ -114,36 +126,28 @@ class AnalyzeDocuments:
         if len(self._analyzer.get_key(doc)) == 0:
             self._count_docs_ignored_because_missing_key = self._count_docs_ignored_because_missing_key + 1
             return
-
-        classifier = self._analyzer.get_classifier(doc)
-        if classifier not in self._report_by_classifier:
-            self._report_by_classifier[classifier] = {
-                'fields': DocsAttributesDistribution(self._analyzer),
-                'doc_keys': {}
-            }
-        report = self._report_by_classifier[classifier]
-        report['fields'].add(doc)
+        self._report = {
+            'fields': DocsAttributesDistribution(self._analyzer),
+            'doc_keys': {}
+        }
+        self._report['fields'].add(doc)
         doc_for_key = {}
         for key, value in doc.items():
             if not self._analyzer.doc_uniqueness_relevant(doc, key):
                 doc_for_key[key] = value
         key = self._analyzer.get_key(doc)
-        if key not in report['doc_keys'].keys():
-            report['doc_keys'][key] = DocsAttributesDistribution(self._analyzer)
-        report['doc_keys'][key].add(doc_for_key)
+        if key not in self._report['doc_keys'].keys():
+            self._report['doc_keys'][key] = DocsAttributesDistribution(self._analyzer)
+        self._report['doc_keys'][key].add(doc_for_key)
 
     def get(self):
-        report = {}
-        for classifier in self._report_by_classifier.keys():
-            result = {'fields_distribution': self._report_by_classifier[classifier]['fields'].get(), 'doc_keys': {}}
-            for key in self._report_by_classifier[classifier]['doc_keys'].keys():
-                result['doc_keys'][key] = self._report_by_classifier[classifier]['doc_keys'][key].get()
-            report[classifier] = result
-
+        result = {'fields_distribution': self._report['fields'].get(), 'doc_keys': {}}
+        for key in self._report['doc_keys'].keys():
+            result['doc_keys'][key] = self._report['doc_keys'][key].get()
         return {
-                    'count_docs': self._count_docs,
-                    'count_docs_ignore' : self._count_docs_ignored,
-                    'analyzed_documents': report
+            'count_docs': self._count_docs,
+            'count_docs_ignore': self._count_docs_ignored,
+            'analyzed_documents': result
         }
 
     def __repr__(self):
