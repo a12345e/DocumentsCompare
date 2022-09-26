@@ -1,4 +1,4 @@
-from doc_analyzer import DocAnalyzer, FieldImportance, AnalyzedDocument
+from doc_analyzer import DocAnalyzer, AttributeImportance, AnalyzedDocument
 import string
 
 _TESTED = 'tested'
@@ -45,7 +45,7 @@ def compue_key_value_distribution_per_classifier(docs: [AnalyzedDocument]):
                 field_values[field_type][field_name].add(doc.get_doc()[field_name])
 
 
-def compue_key_value_distribution(docs: [dict], classifier, min_field_importance: FieldImportance,analyzer: DocAnalyzer):
+def compue_key_value_distribution(docs: [dict], classifier, min_field_importance: AttributeImportance, analyzer: DocAnalyzer):
     analyzed_docs: [AnalyzedDocument] = \
         map(lambda x: AnalyzedDocument(x, analyzer),
             filter(lambda x: x.get_classifier() == classifier, docs))
