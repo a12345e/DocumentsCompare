@@ -1,4 +1,4 @@
-from doc_analyzer import DocsAttributesDistribution
+from doc_analyzer import DocsAttributesDistribution, AnalyzeDocuments
 import string
 from enum import Enum
 
@@ -10,55 +10,87 @@ class CompareDocumentSets:
         FIELD_DOC_COUNT = 'field_doc_count'
         FIELD_VALUES = 'field_values'
 
-    class ReportKeys(Enum):
+    class Results(Enum):
         DIFFERENCE_TYPES = 'difference_types'
+        SAME_DOCS_COUNT = 'same_docs_count'
+        DOCS_COUNT_DIFF = 'docs_count_diff'
         TESTED_ONLY = 'tested_only'
-        EXPECTED_ONLY = 'tested_only'
+        EXPECTED_ONLY = 'expected_only'
+        COMMON = 'common'
+        SAME = 'same'
+        FIELDS = 'fields'
 
-    def __init(self, verbose=True):
-        self._verbose = verbose
+    def __init(self):
+        pass
 
-    @staticmethod
-    def compare_attributes(expected, tested):
-        result = {'differences_types': set()}
-        if expected[DocsAttributesDistribution.Result.DOCS_COUNT.value] == \
-                tested[DocsAttributesDistribution.Result.DOCS_COUNT.value]:
-            result['same_docs_number'] = tested[DocsAttributesDistribution.Result.DOCS_COUNT.value]
+    def compare_analyzed_attributes(self, expected: DocsAttributesDistribution, tested: DocsAttributesDistribution):
+
+        result = {self.Results.DIFFERENCE_TYPES: set()}
+        if expected.get_docs_count() == tested.get_docs_count():
+            result[self.Results.SAME_DOCS_COUNT] = tested.get_docs_count()
         else:
-            result['docs_number'] = tuple(expected[DocsAttributesDistribution.Result.DOCS_COUNT.value],
-                                          tested[DocsAttributesDistribution.Result.DOCS_COUNT.value])
-            result[CompareDocumentSets.ReportKeys.DIFFERENCE_TYPES.value].add(
+            result[self.Results.DOCS_COUNT_DIFF] = tuple(expected.get_docs_count(),
+                                                         tested.get_docs_count())
+            result[CompareDocumentSets.Results.DIFFERENCE_TYPES.value].add(
                 CompareDocumentSets.DifferenceCases.DOCS_COUNT.value)
-        result[CompareDocumentSets.ReportKeys.TESTED_ONLY.value] = set(tested[DocsAttributesDistribution.Result.FIELDS_USAGE].keys()). \
-            difference(set(expected[DocsAttributesDistribution.Result.FIELDS_USAGE].keys()))
-        result[CompareDocumentSets.ReportKeys.EXPECTED_ONLY.value] = set(expected[DocsAttributesDistribution.Result.FIELDS_USAGE].keys()). \
-            difference(set(tested[DocsAttributesDistribution.Result.FIELDS_USAGE].keys()))
-        result['common_fields'] = set(tested[DocsAttributesDistribution.Result.FIELDS_USAGE].keys()). \
-            intersection(set(tested[DocsAttributesDistribution.Result.FIELDS_USAGE].keys()))
-        if len(result['tested_only_fields']) > 0 or len(result['expected_only_fields']) > 0:
-            result[CompareDocumentSets.ReportKeys.DIFFERENCE_TYPES.value].add(
+        result[CompareDocumentSets.Results.TESTED_ONLY.value] = tested.get_fields_usage(). \
+            difference(expected.get_fields_usage())
+        result[CompareDocumentSets.Results.EXPECTED_ONLY.value] = \
+            expected.get_fields_usage().difference(tested.get_fields_usage())
+        common_fields = expected.get_fields_usage().intersection(tested.get_fields_usage())
+        result[self.Results.SAME] = len(common_fields)
+        if len(result[self.Results.TESTED_ONLY]) > 0 or len(result[self.Results.EXPECTED_ONLY]) > 0:
+            result[CompareDocumentSets.Results.DIFFERENCE_TYPES.value].add(
                 CompareDocumentSets.DifferenceCases.FIELD_EXISTENCE.value)
         result_per_field = {}
-        for field in result['common_fields']:
+        for field in common_fields:
             diff = {}
-            if tested[DocsAttributesDistribution.Result.FIELDS_USAGE][field] == \
-                    expected[DocsAttributesDistribution.Result.FIELDS_USAGE][field]:
-                diff['same_docs_count'] = expected[DocsAttributesDistribution.Result.FIELDS_USAGE][field]
+            if tested.get_field_usage(field) == \
+                    expected.get_fields_usage(field):
+                diff[self.Results.SAME_DOCS_COUNT] = expected.get_field_usage(field)
             else:
-                diff['docs_count'] = tuple(expected[DocsAttributesDistribution.Result.FIELDS_USAGE][field],
-                                           tested[DocsAttributesDistribution.Result.FIELDS_USAGE][field])
-                result[CompareDocumentSets.ReportKeys.DIFFERENCE_TYPES.value]. \
+                diff[self.Results.DOCS_COUNT] = tuple(expected.get_field_usage(field),
+                                                      tested.get_field_usage(field))
+                result[CompareDocumentSets.Results.DIFFERENCE_TYPES.value]. \
                     add(CompareDocumentSets.DifferenceCases.FIELD_DOC_COUNT.value)
-            diff[CompareDocumentSets.ReportKeys.TESTED_ONLY.value] = set(tested[DocsAttributesDistribution.Result.FIELD_VALUES][field]). \
-                difference(set(expected[DocsAttributesDistribution.Result.FIELD_VALUES][field]))
-            diff[CompareDocumentSets.ReportKeys.EXPECTED_ONLY.value] = set(expected[DocsAttributesDistribution.Result.FIELD_VALUES][field]). \
-                difference(set(tested[DocsAttributesDistribution.Result.FIELD_VALUES][field]))
-            diff['same_values_count'] = len(
-                set(expected[DocsAttributesDistribution.Result.FIELD_VALUES][field]).
-                intersection(set(tested[DocsAttributesDistribution.Result.FIELD_VALUES][field])))
-            if len(diff[CompareDocumentSets.ReportKeys.TESTED_ONLY.value])> 0 or len(diff[CompareDocumentSets.ReportKeys.TESTED_ONLY.value]) > 0:
-                result[CompareDocumentSets.ReportKeys.DIFFERENCE_TYPES.value]. \
+            diff[CompareDocumentSets.Results.TESTED_ONLY.value] = \
+                tested.get_field_values(field).difference(expected.get_field_values(field))
+            diff[CompareDocumentSets.Results.EXPECTED_ONLY.value] = \
+                expected.get_field_values(field).difference(tested.get_field_values(field))
+            diff[self.Results.SAME] = len(expected.get_field_values(field).
+                                          intersection(tested.get_field_values(field)))
+            if len(diff[CompareDocumentSets.Results.EXPECTED_ONLY_ONLY.value]) > 0 or len(
+                    diff[CompareDocumentSets.Results.TESTED_ONLY.value]) > 0:
+                result[CompareDocumentSets.Results.DIFFERENCE_TYPES.value]. \
                     add(CompareDocumentSets.DifferenceCases.FIELD_VALUES.value)
             result_per_field[field] = diff
-        result['fields'] = result_per_field
+        result[self.Results.FIELDS] = result_per_field
         return result
+
+    def compare_analysed_document_sets(self, expected: AnalyzeDocuments, tested: AnalyzeDocuments):
+        """
+         return {
+            self.Result.DOCS_COUNT.value: self._count_docs,
+            self.Result.FIELD_USAGE.value: self._fields_usage_count,
+            self.Result.FIELD_VALUES: self._fields_values
+        }
+
+                return {
+            self.Results.CLASSIFIER: self._classifier,
+            self.Results.DOCS_COUNT_IGNORE: self._count_docs_ignored,
+            self.Results.COUNT_DOCS_IGNORE_EMPTY_KEY: self._count_docs_ignored_because_missing_key,
+            self.Results.FIELDS: self._build_report[self.Results.FIELDS].get(),
+            self.Results.KEYS: key_results
+        }
+
+        :param expected:
+        :param tested:
+        :return:
+        """
+        result = {self.Results.DIFFERENCE_TYPES: set()}
+        if expected.get_docs_count() == tested.get_docs_count():
+            result[self.Results.SAME_DOCS_COUNT] = tested.get_docs_count()
+        else:
+            result[self.Results.DOCS_COUNT_DIFF] = tuple(expected.get_docs_count(), tested.get_docs_count())
+        result[self.Results.FIELDS] = self.compare_analyzed_attributes(expected.get_docs_count(), tested.get_fields())
+
