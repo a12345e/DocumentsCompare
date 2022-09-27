@@ -2,7 +2,7 @@ import unittest
 import string
 
 from doc_analyzer import DocAnalyzer, AttributeImportance, DocsAttributesDistribution, AnalyzeDocuments
-
+from document_generator import generate_documents
 
 class TheDocAnalyzer(DocAnalyzer):
 
@@ -145,33 +145,40 @@ class TestDocsSummary(unittest.TestCase):
 
 class TestAnalyzeDocuments(unittest.TestCase):
 
-    def test_more(self):
+    def test_one_simple_doc(self):
+        docs = generate_documents(0,1,1,1)
         analyzer = TheDocAnalyzer()
-        doc1 = {
-            'a': 'a',
-            'classifier': 'classifier_x',
-            AttributeImportance.PART_OF_DOC_KEY.name + '_1': 'key_1_value',
-            AttributeImportance.PART_OF_DOC_KEY.name + '_2': 'key_2_value',
-            AttributeImportance.EXISTENCE_RELEVANT.name + '_1': 'exist_1_value',
-            AttributeImportance.EXISTENCE_RELEVANT.name + '_2': 'exist_2_value',
-            AttributeImportance.VALUE_RELEVANT.name + '_1': 'value_relevant_1_value',
-            AttributeImportance.VALUE_RELEVANT.name + '_2': 'value_relevant_2_value',
-            'b': 'b'}
-        doc2 = {
-            'a': 'a',
-            'classifier': 'classifier_x',
-            AttributeImportance.PART_OF_DOC_KEY.name + '_1': 'key_1_value',
-            AttributeImportance.PART_OF_DOC_KEY.name + '_2': 'key_2_value_other',
-            AttributeImportance.EXISTENCE_RELEVANT.name + '_1': 'exist_1_value',
-            AttributeImportance.EXISTENCE_RELEVANT.name + '_2': 'exist_2_value_other',
-            AttributeImportance.VALUE_RELEVANT.name + '_1': 'value_relevant_1_value_other',
-            AttributeImportance.VALUE_RELEVANT.name + '_2': 'value_relevant_2_value_other',
-            'b': 'b'}
         analyzed_documents = AnalyzeDocuments(analyzer)
-        analyzed_documents.add(doc1);
-        analyzed_documents.add(doc2);
-        print(analyzed_documents.get())
-        self.assertEqual({'count_docs': 2, 'count_docs_ignore': 0, 'analyzed_documents': {'classifier_x': {'fields_distribution': {'count_docs': 2, 'attributes_usage': {'PART_OF_DOC_KEY_1': 2, 'PART_OF_DOC_KEY_2': 2, 'EXISTENCE_RELEVANT_1': 2, 'EXISTENCE_RELEVANT_2': 2, 'VALUE_RELEVANT_1': 2, 'VALUE_RELEVANT_2': 2}, 'attributes_distribution': {'PART_OF_DOC_KEY_1': {'key_1_value'}, 'PART_OF_DOC_KEY_2': {'key_2_value', 'key_2_value_other'}, 'VALUE_RELEVANT_1': {'value_relevant_1_value_other', 'value_relevant_1_value'}, 'VALUE_RELEVANT_2': {'value_relevant_2_value_other', 'value_relevant_2_value'}}}, 'doc_keys': {'PART_OF_DOC_KEY_1=key_1_value#PART_OF_DOC_KEY_2=key_2_value': {'count_docs': 1, 'attributes_usage': {'EXISTENCE_RELEVANT_1': 1, 'EXISTENCE_RELEVANT_2': 1, 'VALUE_RELEVANT_1': 1, 'VALUE_RELEVANT_2': 1}, 'attributes_distribution': {'VALUE_RELEVANT_1': {'value_relevant_1_value'}, 'VALUE_RELEVANT_2': {'value_relevant_2_value'}}}, 'PART_OF_DOC_KEY_1=key_1_value#PART_OF_DOC_KEY_2=key_2_value_other': {'count_docs': 1, 'attributes_usage': {'EXISTENCE_RELEVANT_1': 1, 'EXISTENCE_RELEVANT_2': 1, 'VALUE_RELEVANT_1': 1, 'VALUE_RELEVANT_2': 1}, 'attributes_distribution': {'VALUE_RELEVANT_1': {'value_relevant_1_value_other'}, 'VALUE_RELEVANT_2': {'value_relevant_2_value_other'}}}}}}}, analyzed_documents.get())
+        for doc in docs:
+            analyzed_documents.add(doc);
+        self.assertEqual(analyzed_documents.get_keys(),{'PART_OF_DOC_KEY=key_value_0'})
+        self.assertEqual(analyzed_documents.get_key('PART_OF_DOC_KEY=key_value_0').get(), {'docs_count': 1, 'field_usage': {'VALUE_RELEVANT0': 1, 'EXISTENCE_RELEVANT0': 1},'field_values': {'VALUE_RELEVANT0': {'VALUE_RELEVANT_v_0'}}})
+        self.assertEqual(analyzed_documents.get_fields().get(), {'docs_count': 1, 'field_usage': {'PART_OF_DOC_KEY': 1, 'VALUE_RELEVANT0': 1, 'EXISTENCE_RELEVANT0': 1}, 'field_values': {'PART_OF_DOC_KEY': {'key_value_0'}, 'VALUE_RELEVANT0': {'VALUE_RELEVANT_v_0'}}})
+
+    def test_two_keys_2_docs(self):
+        docs = generate_documents(0,2,1,1)
+        analyzer = TheDocAnalyzer()
+        analyzed_documents = AnalyzeDocuments(analyzer)
+        for doc in docs:
+            analyzed_documents.add(doc);
+        self.assertEqual({'PART_OF_DOC_KEY=key_value_0', 'PART_OF_DOC_KEY=key_value_1'}, analyzed_documents.get_keys())
+        self.assertEqual(analyzed_documents.get_key('PART_OF_DOC_KEY=key_value_0').get(), {'docs_count': 1, 'field_usage': {'VALUE_RELEVANT0': 1, 'EXISTENCE_RELEVANT0': 1},'field_values': {'VALUE_RELEVANT0': {'VALUE_RELEVANT_v_0'}}})
+        self.assertEqual(analyzed_documents.get_key('PART_OF_DOC_KEY=key_value_1').get(),
+                         {'docs_count': 1, 'field_usage': {'VALUE_RELEVANT0': 1, 'EXISTENCE_RELEVANT0': 1},
+                          'field_values': {'VALUE_RELEVANT0': {'VALUE_RELEVANT_v_0'}}})
+        self.assertEqual({'docs_count': 2, 'field_usage': {'PART_OF_DOC_KEY': 2, 'VALUE_RELEVANT0': 2, 'EXISTENCE_RELEVANT0': 2}, 'field_values': {'PART_OF_DOC_KEY': {'key_value_0', 'key_value_1'}, 'VALUE_RELEVANT0': {'VALUE_RELEVANT_v_0'}}}, analyzed_documents.get_fields().get())
+
+    def test_1_key_2_values_relevant_values(self):
+        docs = generate_documents(0,1,1,2)
+        analyzer = TheDocAnalyzer()
+        analyzed_documents = AnalyzeDocuments(analyzer)
+        for doc in docs:
+            analyzed_documents.add(doc);
+        self.assertEqual({'PART_OF_DOC_KEY=key_value_0'}, analyzed_documents.get_keys())
+        self.assertEqual({'docs_count': 2, 'field_usage': {'VALUE_RELEVANT0': 2, 'EXISTENCE_RELEVANT0': 2}, 'field_values': {'VALUE_RELEVANT0': {'VALUE_RELEVANT_v_1', 'VALUE_RELEVANT_v_0'}}}, analyzed_documents.get_key('PART_OF_DOC_KEY=key_value_0').get())
+        self.assertEqual({'docs_count': 2, 'field_usage': {'PART_OF_DOC_KEY': 2, 'VALUE_RELEVANT0': 2, 'EXISTENCE_RELEVANT0': 2}, 'field_values': {'PART_OF_DOC_KEY': {'key_value_0'}, 'VALUE_RELEVANT0': {'VALUE_RELEVANT_v_0','VALUE_RELEVANT_v_1'}}}, analyzed_documents.get_fields().get())
+        self.assertEqual({'docs_count': 2, 'field_usage': {'PART_OF_DOC_KEY': 2, 'VALUE_RELEVANT0': 2, 'EXISTENCE_RELEVANT0': 2}, 'field_values': {'PART_OF_DOC_KEY': {'key_value_0'}, 'VALUE_RELEVANT0': {'VALUE_RELEVANT_v_0', 'VALUE_RELEVANT_v_1'}}}, analyzed_documents.get_fields().get())
+
 
 if __name__ == '__main__':
     unittest.main()

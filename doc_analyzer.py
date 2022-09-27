@@ -31,9 +31,9 @@ class DocAnalyzer(ABC):
     def doc_projection_beyond_key(self, doc) -> [string, dict]:
         projected = {}
         for key, value in doc.items():
-            if not self._analyzer.doc_uniqueness_relevant(doc, key):
+            if not self.doc_uniqueness_relevant(doc, key):
                 projected[key] = value
-        key = self._analyzer.get_key(doc)
+        key = self.get_key(doc)
         return key, projected
 
     def field_value_relevant(self, doc: dict, field_name: string) -> bool:
@@ -142,53 +142,45 @@ class AnalyzeDocuments:
         KEYS = 'keys'
         CLASSIFIER = 'classifier'
         DOCS_COUNT = 'count_docs'
-        DOCS_COUNT_IGNORE = 'count_docs_ignore'
 
     def __init__(self, analyzer: DocAnalyzer):
-        self._build_report = {
-            self.Results.FIELDS: DocsAttributesDistribution(self._analyzer),
-            self.Results.KEYS: {}
-        }
         self._analyzer = analyzer
+        self._build_report = {
+            self.Results.FIELDS.value: DocsAttributesDistribution(self._analyzer),
+            self.Results.KEYS.value: {}
+        }
         self._count_docs = 0
         self._count_docs_ignored = 0
 
     def add(self, doc: dict):
-        if self._analyzer.doc_ignored(doc):
-            self._count_docs_ignored = self._count_docs_ignored + 1
-            return
         self._count_docs = self._count_docs + 1
-        self._build_report[self.Results.FIELDS].add(doc)
+        self.get_fields().add(doc)
         key, projection = self._analyzer.doc_projection_beyond_key(doc)
-        if key not in self._build_report[self.Results.KEYS].keys():
-            self._build_report[self.Results.KEYS][key] = DocsAttributesDistribution(self._analyzer)
-        self._build_report[self.Results.KEYS][key].add(projection)
+        if key not in self.get_keys():
+            self._build_report[self.Results.KEYS.value][key] = DocsAttributesDistribution(self._analyzer)
+        self._build_report[self.Results.KEYS.value][key].add(projection)
 
     def get(self):
         key_results = {}
-        for key in self._build_report[self.Results.KEYS].keys():
-            key_results[key] = self._build_report[self.Results.KEYS][key].get()
+        for key in self.get_keys():
+            key_results[key] = self.get_key(key).get()
         return {
-            self.Results.DOCS_COUNT : self.get_docs_count(),
-            self.Results.DOCS_COUNT_IGNORE: self.get_docs_count_ignore(),
-            self.Results.FIELDS: self.get_fields().get(),
-            self.Results.KEYS: key_results
+            self.Results.DOCS_COUNT.value: self.get_docs_count(),
+            self.Results.FIELDS.value: self.get_fields().get(),
+            self.Results.KEYS.value: key_results
         }
-
-    def get_docs_count_ignore(self):
-        return self._count_docs_ignored
 
     def get_docs_count(self):
         return self._count_docs
 
     def get_fields(self) -> DocsAttributesDistribution:
-        return self._build_report[self.Results.FIELDS]
+        return self._build_report[self.Results.FIELDS.value]
 
     def get_keys(self):
-        return self._build_report[self.Results.KEYS].keys()
+        return set(self._build_report[self.Results.KEYS.value].keys())
 
     def get_key(self, key) -> DocsAttributesDistribution:
-        return self._build_report[self.Results.KEYS][key]
+        return self._build_report[self.Results.KEYS.value][key]
 
     def __repr__(self):
         return self.get()
