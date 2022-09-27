@@ -13,13 +13,13 @@ class TheDocAnalyzer(DocAnalyzer):
 
     def _get_field_importance(self, doc: dict, field_name: string) -> AttributeImportance:
         if field_name.startswith(AttributeImportance.EXISTENCE_RELEVANT.name):
-            return AttributeImportance.EXISTENCE_RELEVANT
+            return AttributeImportance.EXISTENCE_RELEVANT.value
         elif field_name.startswith(AttributeImportance.VALUE_RELEVANT.name):
-            return AttributeImportance.VALUE_RELEVANT
+            return AttributeImportance.VALUE_RELEVANT.value
         elif field_name.startswith(AttributeImportance.PART_OF_DOC_KEY.name):
-            return AttributeImportance.PART_OF_DOC_KEY
+            return AttributeImportance.PART_OF_DOC_KEY.value
         else:
-            return AttributeImportance.NOT_RELEVANT
+            return AttributeImportance.NOT_RELEVANT.value
 
     def doc_ignored(self, doc: dict) -> bool:
         return False
@@ -54,7 +54,7 @@ class TestDocAnalyzer(unittest.TestCase):
     def test_the_analyzer_attribute_exist_relevant(self):
         analyzer = TheDocAnalyzer()
         self.assertFalse(analyzer.field_existence_relevant({'x': 'x'}, 'x'))
-        self.assertFalse(analyzer.field_existence_relevant({AttributeImportance.EXISTENCE_RELEVANT.name + 'x': 'x'},
+        self.assertTrue(analyzer.field_existence_relevant({AttributeImportance.EXISTENCE_RELEVANT.name + 'x': 'x'},
                                                            AttributeImportance.EXISTENCE_RELEVANT.name + 'x'))
         self.assertTrue(analyzer.field_existence_relevant({
             AttributeImportance.PART_OF_DOC_KEY.name + 'x': 'x',
@@ -92,8 +92,14 @@ class TestDocsSummary(unittest.TestCase):
         }
         summary = DocsAttributesDistribution(analyzer)
         summary.add(doc1);
-        summary.add(doc2);
-        self.assertEqual(summary.get(), {'count_docs': 2, 'attributes_usage': {'PART_OF_DOC_KEY_1': 2, 'EXISTENCE_RELEVANT_1': 2, 'EXISTENCE_RELEVANT_2': 2}, 'attributes_distribution': {'PART_OF_DOC_KEY_1': {'key_1_value'}}})
+        summary.add(doc2)
+        print(summary.get())
+        self.assertEqual(summary.get_docs_count(), 2)
+        self.assertEqual(summary.get_field_usage('PART_OF_DOC_KEY_1'), 2)
+        self.assertEqual(summary.get_field_usage('EXISTENCE_RELEVANT_1'), 2)
+        self.assertEqual(summary.get_field_usage('EXISTENCE_RELEVANT_2'), 2)
+        self.assertEqual(summary.get_field_values('PART_OF_DOC_KEY_1'), {'key_1_value'})
+
 
     def test_more(self):
         analyzer = TheDocAnalyzer()
@@ -120,7 +126,21 @@ class TestDocsSummary(unittest.TestCase):
         summary = DocsAttributesDistribution(analyzer)
         summary.add(doc1);
         summary.add(doc2);
-        self.assertEqual({'count_docs': 2, 'attributes_usage': {'PART_OF_DOC_KEY_1': 2, 'PART_OF_DOC_KEY_2': 2, 'EXISTENCE_RELEVANT_1': 2, 'EXISTENCE_RELEVANT_2': 2, 'VALUE_RELEVANT_1': 2, 'VALUE_RELEVANT_2': 2}, 'attributes_distribution': {'PART_OF_DOC_KEY_1': {'key_1_value'}, 'PART_OF_DOC_KEY_2': {'key_2_value', 'key_2_value_other'}, 'VALUE_RELEVANT_1': {'value_relevant_1_value', 'value_relevant_1_value_other'}, 'VALUE_RELEVANT_2': {'value_relevant_2_value', 'value_relevant_2_value_other'}}},summary.get())
+        print(summary.get())
+        self.assertEqual(summary.get_docs_count(),2)
+        self.assertEqual(summary.get_fields_used(), {'VALUE_RELEVANT_1', 'EXISTENCE_RELEVANT_2', 'PART_OF_DOC_KEY_2', 'PART_OF_DOC_KEY_1', 'VALUE_RELEVANT_2', 'EXISTENCE_RELEVANT_1'})
+        self.assertEqual(summary.get_field_usage('PART_OF_DOC_KEY_2'), 2)
+        self.assertEqual(summary.get_field_usage('good'), 0)
+        self.assertEqual(summary.get_field_usage('PART_OF_DOC_KEY_1'), 2)
+        self.assertEqual(summary.get_field_usage('EXISTENCE_RELEVANT_1'), 2)
+        self.assertEqual(summary.get_field_usage('EXISTENCE_RELEVANT_2'), 2)
+        self.assertEqual(summary.get_field_usage('VALUE_RELEVANT_1'), 2)
+        self.assertEqual(summary.get_field_usage('VALUE_RELEVANT_2'), 2)
+        self.assertEqual(summary.get_field_usage('VALUE_RELEVANT_2'), 2)
+        self.assertEqual(summary.get_field_values('VALUE_RELEVANT_2'), {'value_relevant_2_value_other', 'value_relevant_2_value'})
+        self.assertEqual(summary.get_field_values('PART_OF_DOC_KEY_1'), {'key_1_value'})
+        self.assertEqual(summary.get_field_values('PART_OF_DOC_KEY_2'), {'key_2_value','key_2_value_other'}, )
+        self.assertEqual(summary.get_field_values('EXISTENCE_RELEVANT_2'), set())
 
 
 class TestAnalyzeDocuments(unittest.TestCase):

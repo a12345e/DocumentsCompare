@@ -35,11 +35,11 @@ class CompareDocumentSets:
         if [self.Results.DOCS_COUNT][0] != [self.Results.DOCS_COUNT][1]:
             result[CompareDocumentSets.Results.DIFFERENCE_TYPES.value].add(
                 CompareDocumentSets.DifferenceCases.DOCS_COUNT.value)
-        result[CompareDocumentSets.Results.TESTED_ONLY.value] = tested.get_fields_usage(). \
-            difference(expected.get_fields_usage())
+        result[CompareDocumentSets.Results.TESTED_ONLY.value] = tested.get_fields_used(). \
+            difference(expected.get_fields_used())
         result[CompareDocumentSets.Results.EXPECTED_ONLY.value] = \
-            expected.get_fields_usage().difference(tested.get_fields_usage())
-        common_fields = expected.get_fields_usage().intersection(tested.get_fields_usage())
+            expected.get_fields_used().difference(tested.get_fields_used())
+        common_fields = expected.get_fields_used().intersection(tested.get_fields_used())
         result[self.Results.SAME] = len(common_fields)
         if len(result[self.Results.TESTED_ONLY]) > 0 or len(result[self.Results.EXPECTED_ONLY]) > 0:
             result[CompareDocumentSets.Results.DIFFERENCE_TYPES.value].add(
@@ -48,7 +48,7 @@ class CompareDocumentSets:
         for field in common_fields:
             diff = {}
             if tested.get_field_usage(field) == \
-                    expected.get_fields_usage(field):
+                    expected.get_fields_used(field):
                 diff[self.Results.SAME_DOCS_COUNT] = expected.get_field_usage(field)
             else:
                 diff[self.Results.DOCS_COUNT] = tuple(expected.get_field_usage(field),

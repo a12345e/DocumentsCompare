@@ -19,14 +19,14 @@ class DocAnalyzer(ABC):
         pass
 
     def get_key(self, doc: dict):
-        key_fields = [x for x in doc.keys() if self._get_field_importance(doc, x).value
+        key_fields = [x for x in doc.keys() if self._get_field_importance(doc, x)
                       <= AttributeImportance.PART_OF_DOC_KEY.value]
         key_fields.sort()
         return '#'.join(map(lambda x: x + '=' + str(doc[x]), key_fields))
 
     def doc_uniqueness_relevant(self, doc: dict, field_name: string) -> bool:
         return not self.doc_ignored(doc) and field_name in doc.keys() and \
-               self._get_field_importance(doc, field_name).value <= AttributeImportance.PART_OF_DOC_KEY.value
+               self._get_field_importance(doc, field_name) <= AttributeImportance.PART_OF_DOC_KEY.value
 
     def doc_projection_beyond_key(self, doc) -> [string, dict]:
         projected = {}
@@ -38,11 +38,14 @@ class DocAnalyzer(ABC):
 
     def field_value_relevant(self, doc: dict, field_name: string) -> bool:
         return not self.doc_ignored(doc) and field_name in doc.keys() and \
-               self._get_field_importance(doc, field_name).value <= AttributeImportance.VALUE_RELEVANT.value
+               self._get_field_importance(doc, field_name) <= AttributeImportance.VALUE_RELEVANT.value
 
     def field_existence_relevant(self, doc: dict, field_name: string) -> bool:
-        return not self.doc_ignored(doc) and field_name in doc.keys() and \
-               self._get_field_importance(doc, field_name).value <= AttributeImportance.EXISTENCE_RELEVANT.value
+        ignore = self.doc_ignored(doc)
+        field_name_in_doc_keys = field_name in doc.keys()
+        importance = self._get_field_importance(doc, field_name)
+        return not ignore and field_name_in_doc_keys and \
+                importance <= AttributeImportance.EXISTENCE_RELEVANT.value
 
     @abstractmethod
     def doc_ignored(self, doc: dict) -> bool:
@@ -99,23 +102,32 @@ class DocsAttributesDistribution:
         return {
             self.Result.DOCS_COUNT.value: self.get_docs_count(),
             self.Result.FIELD_USAGE.value: self.get_fields_usage(),
-            self.Result.FIELD_VALUES: self.get_fields_values()
+            self.Result.FIELD_VALUES.value: self.get_fields_values()
         }
 
     def get_docs_count(self) -> int:
         return self._count_docs
 
-    def get_fields_usage(self) -> set(string):
-        return self._fields_usage_count.keys()
+    def get_fields_usage(self):
+        return self._fields_usage_count
+
+    def get_fields_used(self):
+        return set(self._fields_usage_count.keys())
 
     def get_field_usage(self, name: string) -> int:
-        return self._fields_usage_count[name]
+        if name in self._fields_usage_count.keys():
+            return self._fields_usage_count[name]
+        else:
+            return 0
 
     def get_fields_values(self) -> dict:
         return self._fields_values
 
-    def get_field_values(self, name: string) -> set(string):
-        return self._fields_values[name]
+    def get_field_values(self, name: string):
+        if name in self._fields_values.keys():
+            return self._fields_values[name]
+        else:
+            return set()
 
     def __repr__(self):
         return self.get()
@@ -172,7 +184,7 @@ class AnalyzeDocuments:
     def get_fields(self) -> DocsAttributesDistribution:
         return self._build_report[self.Results.FIELDS]
 
-    def get_keys(self) -> set(string):
+    def get_keys(self):
         return self._build_report[self.Results.KEYS].keys()
 
     def get_key(self, key) -> DocsAttributesDistribution:
