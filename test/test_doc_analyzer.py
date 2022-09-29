@@ -177,7 +177,20 @@ class TestAnalyzeDocuments(unittest.TestCase):
         self.assertEqual({'PART_OF_DOC_KEY=key_value_0'}, analyzed_documents.get_keys())
         self.assertEqual({'docs_count': 2, 'field_usage': {'VALUE_RELEVANT0': 2, 'EXISTENCE_RELEVANT0': 2}, 'field_values': {'VALUE_RELEVANT0': {'VALUE_RELEVANT_v_1', 'VALUE_RELEVANT_v_0'}}}, analyzed_documents.get_key('PART_OF_DOC_KEY=key_value_0').get())
         self.assertEqual({'docs_count': 2, 'field_usage': {'PART_OF_DOC_KEY': 2, 'VALUE_RELEVANT0': 2, 'EXISTENCE_RELEVANT0': 2}, 'field_values': {'PART_OF_DOC_KEY': {'key_value_0'}, 'VALUE_RELEVANT0': {'VALUE_RELEVANT_v_0','VALUE_RELEVANT_v_1'}}}, analyzed_documents.get_fields().get())
-        self.assertEqual({'docs_count': 2, 'field_usage': {'PART_OF_DOC_KEY': 2, 'VALUE_RELEVANT0': 2, 'EXISTENCE_RELEVANT0': 2}, 'field_values': {'PART_OF_DOC_KEY': {'key_value_0'}, 'VALUE_RELEVANT0': {'VALUE_RELEVANT_v_0', 'VALUE_RELEVANT_v_1'}}}, analyzed_documents.get_fields().get())
+
+    def test_1_key_2_value_names(self):
+        docs = generate_documents(0,1,2,2)
+        analyzer = TheDocAnalyzer()
+        analyzed_documents = AnalyzeDocuments(analyzer)
+        for doc in docs:
+            analyzed_documents.add(doc)
+        self.assertEqual({'PART_OF_DOC_KEY=key_value_0'}, analyzed_documents.get_keys())
+        self.assertEqual({
+                  'docs_count': 4,'field_usage': {'EXISTENCE_RELEVANT0': 2,'EXISTENCE_RELEVANT1': 2,
+                  'VALUE_RELEVANT0': 2,'VALUE_RELEVANT1': 2},'field_values': {'VALUE_RELEVANT0':
+                  {'VALUE_RELEVANT_v_0','VALUE_RELEVANT_v_1'},'VALUE_RELEVANT1': {'VALUE_RELEVANT_v_0',
+                  'VALUE_RELEVANT_v_1'}}}, analyzed_documents.get_key('PART_OF_DOC_KEY=key_value_0').get())
+        self.assertEqual({'docs_count': 4, 'field_usage': {'PART_OF_DOC_KEY': 4, 'VALUE_RELEVANT0': 2, 'EXISTENCE_RELEVANT0': 2, 'VALUE_RELEVANT1': 2, 'EXISTENCE_RELEVANT1': 2}, 'field_values': {'PART_OF_DOC_KEY': {'key_value_0'}, 'VALUE_RELEVANT0': {'VALUE_RELEVANT_v_0', 'VALUE_RELEVANT_v_1'}, 'VALUE_RELEVANT1': {'VALUE_RELEVANT_v_0', 'VALUE_RELEVANT_v_1'}}}, analyzed_documents.get_fields().get())
 
 
 if __name__ == '__main__':

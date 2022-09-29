@@ -103,8 +103,8 @@ class CompareDocumentSets:
     def compare(self, expected: [dict], tested: [dict]):
         self._result = {}
         classifiers = set(map(lambda x: self._analyzer.get_classifier(x), expected))
-        expected_not_ignored = map(lambda x: not self._analyzer.doc_ignored(x), expected)
-        tested_not_ignored = map(lambda x: not self._analyzer.doc_ignored(x), tested)
+        expected_not_ignored = filter(lambda x: not self._analyzer.doc_ignored(x), expected)
+        tested_not_ignored = filter(lambda x: not self._analyzer.doc_ignored(x), tested)
         for classifier in classifiers:
             self._result[classifier] = self.compare(expected_not_ignored, tested_not_ignored, classifier)
         return self._result
@@ -112,11 +112,11 @@ class CompareDocumentSets:
     def run(self, expected: [dict], tested: [dict], ut: string, root_dir: string):
         result = self.compare(expected, tested)
         print(ut)
-        for key in result.keys():
-            file_name = os.path.join(root_dir, ut, key+'.compare.txt')
+        for classifier in result.keys():
+            file_name = os.path.join(root_dir, ut, classifier+'.compare.txt')
             print('\t', file_name)
             with open(file_name, 'w') as f:
-                f.write(result[key])
-            print('\t\tcount=', result[key][self.Results.DOCS_COUNT])
-            print('\t\tdifference:', result[key][self.Results.DIFFERENCE_TYPES])
+                f.write(result[classifier])
+            print('\t\tcount=', result[classifier][self.Results.DOCS_COUNT])
+            print('\t\tdifference:', result[classifier][self.Results.DIFFERENCE_TYPES])
         return result
