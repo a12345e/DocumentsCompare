@@ -4,6 +4,18 @@ import os
 from enum import Enum
 
 
+def pretty(d, indent=0):
+    str_value = ''
+    jump = '  '
+    for key, value in d.items():
+        str_value += (jump * indent) + str(key) + ': '
+        if isinstance(value, dict):
+            str_value += '\n' + pretty(value, indent + 1)
+        else:
+            str_value += str(value) + '\n'
+    return str_value
+
+
 class CompareDocumentSets:
     class DifferenceCases(Enum):
         DOCS_COUNT = 'docs_count'
@@ -21,9 +33,6 @@ class CompareDocumentSets:
         SAME = 'same'
         FIELDS = 'fields'
         KEYS = 'keys'
-
-    def __init__(self):
-        self._result = None
 
     def __init(self, analyzer: DocAnalyzer):
         self._analyzer = analyzer
@@ -69,7 +78,7 @@ class CompareDocumentSets:
         result[self.Results.FIELDS] = result_per_field
         return result
 
-    def compare_analysed_document_sets(self, expected: AnalyzeDocuments, tested: AnalyzeDocuments):
+    def compare_analyzed_document_sets(self, expected: AnalyzeDocuments, tested: AnalyzeDocuments):
         result = {self.Results.DIFFERENCE_TYPES: set(), self.Results.DOCS_COUNT: tuple(expected.get_docs_count(),
                                                                                        tested.get_docs_count())}
         if [self.Results.DOCS_COUNT][0] != [self.Results.DOCS_COUNT][1]:
@@ -95,28 +104,35 @@ class CompareDocumentSets:
                     result[self.Results.KEYS][key][self.Results.DIFFERENCE_TYPES])
         return result
 
-    def compare(self, expected: [dict], tested: [dict], classifier: string):
-        expected_4_classifier = filter(lambda x: classifier == self._analyzer.get_classifier(x), expected)
-        tested_4_classifier = filter(lambda x: classifier == self._analyzer.get_classifier(x), tested)
-        return self.compare_analysed_document_sets(expected_4_classifier, tested_4_classifier)
-
-    def compare(self, expected: [dict], tested: [dict]):
-        self._result = {}
-        classifiers = set(map(lambda x: self._analyzer.get_classifier(x), expected))
-        expected_not_ignored = filter(lambda x: not self._analyzer.doc_ignored(x), expected)
-        tested_not_ignored = filter(lambda x: not self._analyzer.doc_ignored(x), tested)
-        for classifier in classifiers:
-            self._result[classifier] = self.compare(expected_not_ignored, tested_not_ignored, classifier)
-        return self._result
-
     def run(self, expected: [dict], tested: [dict], ut: string, root_dir: string):
-        result = self.compare(expected, tested)
-        print(ut)
-        for classifier in result.keys():
-            file_name = os.path.join(root_dir, ut, classifier+'.compare.txt')
+        classifiers = set(map(lambda x: self._analyzer.get_classifier(x), expected))
+        summary = {}
+        for classifier in classifiers:
+            summary[classifier] = {}
+            expected_analyzed = AnalyzeDocuments(self._analyzer,
+                                                 filter(lambda x:
+                                                        not self._analyzer.doc_ignored(x) and
+                                                        self._analyzer.get_classifier() == classifier, expected)
+                                                 )
+            file_name = os.path.join(root_dir, ut, classifier + '.expected_analyzed.txt')
             print('\t', file_name)
             with open(file_name, 'w') as f:
-                f.write(result[classifier])
-            print('\t\tcount=', result[classifier][self.Results.DOCS_COUNT])
-            print('\t\tdifference:', result[classifier][self.Results.DIFFERENCE_TYPES])
-        return result
+                f.write(pretty(expected_analyzed.get()))
+            tested_analyzed = AnalyzeDocuments(self._analyzer,
+                                               filter(lambda x:
+                                                      not self._analyzer.doc_ignored(x) and
+                                                      self._analyzer.get_classifier() == classifier, tested)
+                                               )
+            file_name = os.path.join(root_dir, ut, classifier + '.tested_analyzed.txt')
+            print('\t', file_name)
+            with open(file_name, 'w') as f:
+                f.write(pretty(tested_analyzed.get()))
+            result = self.compare(expected_analyzed, tested_analyzed)
+            file_name = os.path.join(root_dir, ut, classifier + '.compare.txt')
+            print('\t', file_name)
+            with open(file_name, 'w') as f:
+                f.write(result)
+            summary[classifier][self.Results.DOCS_COUNT] = result[self.Results.DOCS_COUNT]
+            summary[classifier][self.Results.DIFFERENCE_TYPES] = result[self.Results.DOCS_COUNT]
+            print(pretty(summary, 1))
+        return summary

@@ -6,6 +6,7 @@ def set_attribute(docs: [dict], name, value):
     for doc in docs:
         doc[name] = value
 
+
 def generate_documents(start_index: int,
                        keys_count: int,
                        other_name_per_key: int,

@@ -143,7 +143,7 @@ class AnalyzeDocuments:
         CLASSIFIER = 'classifier'
         DOCS_COUNT = 'count_docs'
 
-    def __init__(self, analyzer: DocAnalyzer):
+    def __init__(self, analyzer: DocAnalyzer, docs: [dict]):
         self._analyzer = analyzer
         self._build_report = {
             self.Results.FIELDS.value: DocsAttributesDistribution(self._analyzer),
@@ -151,8 +151,13 @@ class AnalyzeDocuments:
         }
         self._count_docs = 0
         self._count_docs_ignored = 0
+        self._add_docs(docs)
 
-    def add(self, doc: dict):
+    def _add_docs(self, docs: [dict] ):
+        for doc in docs:
+            self.add(doc)
+
+    def _add(self, doc: dict):
         self._count_docs = self._count_docs + 1
         self.get_fields().add(doc)
         key, projection = self._analyzer.doc_projection_beyond_key(doc)
