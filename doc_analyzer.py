@@ -155,7 +155,7 @@ class AnalyzeDocuments:
 
     def _add_docs(self, docs: [dict] ):
         for doc in docs:
-            self.add(doc)
+            self._add(doc)
 
     def _add(self, doc: dict):
         self._count_docs = self._count_docs + 1
