@@ -25,7 +25,7 @@ class CompareDocumentSets:
         FIELD_VALUES = 'field_values'
 
     class Results(Enum):
-        DIFFERENCE_TYPES = 'difference_types'
+        SUMMED_DIFFERENCE_TYPES = 'summed_difference_types'
         DOCS_COUNT = 'docs_count'
         TESTED_ONLY = 'tested_only'
         EXPECTED_ONLY = 'expected_only'
@@ -35,7 +35,7 @@ class CompareDocumentSets:
         KEYS = 'keys'
         COMMON_KEY_VALUES = 'common_values'
         SUMMARY = 'summary'
-        USAGE_SUMMARY = 'usage_summary'
+        FIELD_USAGE_SUMMARY = 'field_usage_summary'
 
     def __init__(self, analyzer: DocAnalyzer):
         self._analyzer = analyzer
@@ -44,21 +44,21 @@ class CompareDocumentSets:
         diff_types = set()
         if expected != tested:
             diff_types.add(self.DifferenceCases.DOCS_COUNT.value)
-        result[self.Results.DIFFERENCE_TYPES.value] = result[self.Results.DIFFERENCE_TYPES.value].union(diff_types)
+        result[self.Results.SUMMED_DIFFERENCE_TYPES.value] = result[self.Results.SUMMED_DIFFERENCE_TYPES.value].union(diff_types)
         result[self.Results.DOCS_COUNT.value] = tuple([expected, tested])
 
     def compare_analyzed_attributes(self, expected: DocsAttributesDistribution, tested: DocsAttributesDistribution):
-        result = {self.Results.DIFFERENCE_TYPES.value: set()}
+        result = {self.Results.SUMMED_DIFFERENCE_TYPES.value: set()}
         self.compare_docs_count(expected.get_docs_count(), tested.get_docs_count(), result)
         common_fields = expected.get_fields_used().intersection(tested.get_fields_used())
-        result[self.Results.USAGE_SUMMARY.value] = {
+        result[self.Results.FIELD_USAGE_SUMMARY.value] = {
             self.Results.TESTED_ONLY.value : tested.get_fields_used().difference(expected.get_fields_used()),
             self.Results.EXPECTED_ONLY.value: expected.get_fields_used().difference(tested.get_fields_used()),
             self.Results.SAME.value: len(common_fields)
         }
-        if len(result[self.Results.USAGE_SUMMARY.value][self.Results.TESTED_ONLY.value]) > 0 or \
-                len(result[self.Results.USAGE_SUMMARY.value][self.Results.EXPECTED_ONLY.value]) > 0:
-            result[self.Results.DIFFERENCE_TYPES.value].add(
+        if len(result[self.Results.FIELD_USAGE_SUMMARY.value][self.Results.TESTED_ONLY.value]) > 0 or \
+                len(result[self.Results.FIELD_USAGE_SUMMARY.value][self.Results.EXPECTED_ONLY.value]) > 0:
+            result[self.Results.SUMMED_DIFFERENCE_TYPES.value].add(
                 self.DifferenceCases.FIELD_EXISTENCE.value)
         result_per_field = {}
         common_fields_of_relevant_value = expected.get_field_value_names().intersection(tested.get_field_value_names())
@@ -67,7 +67,7 @@ class CompareDocumentSets:
                                                           tested.get_field_usage(field)])}
             if tested.get_field_usage(field) != \
                     expected.get_field_usage(field):
-                result[CompareDocumentSets.Results.DIFFERENCE_TYPES.value]. \
+                result[CompareDocumentSets.Results.SUMMED_DIFFERENCE_TYPES.value]. \
                     add(CompareDocumentSets.DifferenceCases.FIELD_DOC_COUNT.value)
             diff[CompareDocumentSets.Results.TESTED_ONLY.value] = \
                 tested.get_field_values(field).difference(expected.get_field_values(field))
@@ -77,20 +77,20 @@ class CompareDocumentSets:
                                                 intersection(tested.get_field_values(field)))
             if len(diff[CompareDocumentSets.Results.EXPECTED_ONLY.value]) > 0 or len(
                     diff[CompareDocumentSets.Results.TESTED_ONLY.value]) > 0:
-                result[CompareDocumentSets.Results.DIFFERENCE_TYPES.value]. \
+                result[CompareDocumentSets.Results.SUMMED_DIFFERENCE_TYPES.value]. \
                     add(CompareDocumentSets.DifferenceCases.FIELD_VALUES.value)
             result_per_field[field] = diff
         result[self.Results.FIELDS_WITH_RELEVANT_VALUES.value] = result_per_field
         return result
 
     def compare_analyzed_document_sets(self, expected: AnalyzeDocuments, tested: AnalyzeDocuments):
-        result = {self.Results.DIFFERENCE_TYPES.value: set()}
+        result = {self.Results.SUMMED_DIFFERENCE_TYPES.value: set()}
         self.compare_docs_count(expected.get_docs_count(), tested.get_docs_count(), result)
 
         result[self.Results.FIELDS.value] = self.compare_analyzed_attributes(expected.get_fields(), tested.get_fields())
-        result[self.Results.DIFFERENCE_TYPES.value] = \
-            result[self.Results.DIFFERENCE_TYPES.value].union(
-                result[self.Results.FIELDS.value][self.Results.DIFFERENCE_TYPES.value])
+        result[self.Results.SUMMED_DIFFERENCE_TYPES.value] = \
+            result[self.Results.SUMMED_DIFFERENCE_TYPES.value].union(
+                result[self.Results.FIELDS.value][self.Results.SUMMED_DIFFERENCE_TYPES.value])
         result[CompareDocumentSets.Results.KEYS.value] = {}
         common_keys = expected.get_keys().intersection(tested.get_keys())
         keys_summmary = {
@@ -103,14 +103,14 @@ class CompareDocumentSets:
             result[self.Results.KEYS.value][self.Results.COMMON_KEY_VALUES.value][key] = self.compare_analyzed_attributes(
                 expected.get_key(key),
                 tested.get_key(key))
-            result[self.Results.DIFFERENCE_TYPES.value] = \
-                result[self.Results.DIFFERENCE_TYPES.value].union(
+            result[self.Results.SUMMED_DIFFERENCE_TYPES.value] = \
+                result[self.Results.SUMMED_DIFFERENCE_TYPES.value].union(
                     result[self.Results.KEYS.value]
-                    [self.Results.COMMON_KEY_VALUES.value][key][self.Results.DIFFERENCE_TYPES.value])
+                    [self.Results.COMMON_KEY_VALUES.value][key][self.Results.SUMMED_DIFFERENCE_TYPES.value])
         result[CompareDocumentSets.Results.KEYS.value][CompareDocumentSets.Results.SUMMARY.value] = keys_summmary
         if len(keys_summmary[self.Results.TESTED_ONLY.value]) > 0 or len(
                 keys_summmary[self.Results.EXPECTED_ONLY.value]) > 0:
-            result[CompareDocumentSets.Results.DIFFERENCE_TYPES.value].add(
+            result[CompareDocumentSets.Results.SUMMED_DIFFERENCE_TYPES.value].add(
                 CompareDocumentSets.DifferenceCases.KEY_EXISTENCE.value)
         return result
 
@@ -119,6 +119,7 @@ class CompareDocumentSets:
         summary = {}
         ut_dir = os.path.join(root_dir, ut)
         os.makedirs(ut_dir, exist_ok=True)
+        full_result = {}
         for classifier in classifiers:
             summary[classifier] = {}
             expected_analyzed = AnalyzeDocuments(self._analyzer,
@@ -146,6 +147,6 @@ class CompareDocumentSets:
             with open(file_name, 'w') as f:
                 f.write(pretty(result, 0))
             summary[classifier][self.Results.DOCS_COUNT.value] = result[self.Results.DOCS_COUNT.value]
-            summary[classifier][self.Results.DIFFERENCE_TYPES.value] = result[self.Results.DIFFERENCE_TYPES.value]
-            print(pretty(summary, 1))
-        return summary
+            summary[classifier][self.Results.SUMMED_DIFFERENCE_TYPES.value] = result[self.Results.SUMMED_DIFFERENCE_TYPES.value]
+            full_result[classifier] = result
+        return summary, result
