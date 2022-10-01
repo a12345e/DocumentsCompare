@@ -120,6 +120,9 @@ class DocsAttributesDistribution:
         else:
             return 0
 
+    def get_field_value_names(self):
+        return set(self._fields_values.keys())
+
     def get_fields_values(self) -> dict:
         return self._fields_values
 

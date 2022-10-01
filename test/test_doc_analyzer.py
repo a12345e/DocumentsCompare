@@ -2,7 +2,7 @@ import unittest
 import string
 
 from doc_analyzer import DocAnalyzer, AttributeImportance, DocsAttributesDistribution, AnalyzeDocuments
-from document_generator import generate_documents
+from document_generator import generate_document
 
 
 class TheDocAnalyzer(DocAnalyzer):
@@ -149,7 +149,8 @@ class TestDocsSummary(unittest.TestCase):
 class TestAnalyzeDocuments(unittest.TestCase):
 
     def test_one_simple_doc(self):
-        analyzed_documents = AnalyzeDocuments(TheDocAnalyzer(), generate_documents(0, 1, 1, 1))
+        doc = generate_document(None,['=key_value_0'], ['0=VALUE_RELEVANT_v_0'],  ['0=some'],[])
+        analyzed_documents = AnalyzeDocuments(TheDocAnalyzer(),[doc])
         self.assertEqual(analyzed_documents.get_keys(), {'PART_OF_DOC_KEY=key_value_0'})
         self.assertEqual(analyzed_documents.get_key('PART_OF_DOC_KEY=key_value_0').get(),
                          {'docs_count': 1, 'field_usage': {'VALUE_RELEVANT0': 1, 'EXISTENCE_RELEVANT0': 1},
@@ -162,7 +163,9 @@ class TestAnalyzeDocuments(unittest.TestCase):
                                                                                       'VALUE_RELEVANT_v_0'}}})
 
     def test_two_keys_2_docs(self):
-        analyzed_documents = AnalyzeDocuments(TheDocAnalyzer(), generate_documents(0, 2, 1, 1))
+        doc1 = generate_document(None, ['=key_value_0'], ['0=VALUE_RELEVANT_v_0'], ['0=some'], [])
+        doc2 = generate_document(None, ['=key_value_1'], ['0=VALUE_RELEVANT_v_0'], ['0=some'], [])
+        analyzed_documents = AnalyzeDocuments(TheDocAnalyzer(), [doc1,doc2])
         self.assertEqual({'PART_OF_DOC_KEY=key_value_0', 'PART_OF_DOC_KEY=key_value_1'}, analyzed_documents.get_keys())
         self.assertEqual(analyzed_documents.get_key('PART_OF_DOC_KEY=key_value_0').get(),
                          {'docs_count': 1, 'field_usage': {'VALUE_RELEVANT0': 1, 'EXISTENCE_RELEVANT0': 1},
@@ -176,7 +179,9 @@ class TestAnalyzeDocuments(unittest.TestCase):
                               'VALUE_RELEVANT0': {'VALUE_RELEVANT_v_0'}}}, analyzed_documents.get_fields().get())
 
     def test_1_key_2_values_relevant_values(self):
-        analyzed_documents = AnalyzeDocuments(TheDocAnalyzer(), generate_documents(0, 1, 1, 2))
+        doc1 = generate_document(None, ['=key_value_0'], ['0=VALUE_RELEVANT_v_0'], ['0=some'], [])
+        doc2 = generate_document(None, ['=key_value_0'], ['0=VALUE_RELEVANT_v_1'], ['0=some2'], [])
+        analyzed_documents = AnalyzeDocuments(TheDocAnalyzer(), [doc1, doc2])
         self.assertEqual({'PART_OF_DOC_KEY=key_value_0'}, analyzed_documents.get_keys())
         self.assertEqual({'docs_count': 2, 'field_usage': {'VALUE_RELEVANT0': 2, 'EXISTENCE_RELEVANT0': 2},
                           'field_values': {'VALUE_RELEVANT0': {'VALUE_RELEVANT_v_1', 'VALUE_RELEVANT_v_0'}}},
@@ -188,7 +193,12 @@ class TestAnalyzeDocuments(unittest.TestCase):
             analyzed_documents.get_fields().get())
 
     def test_1_key_2_value_names(self):
-        analyzed_documents = AnalyzeDocuments(TheDocAnalyzer(), generate_documents(0, 1, 2, 2))
+        doc1 = generate_document(None, ['=key_value_0'], ['0=VALUE_RELEVANT_v_0'], ['0=some0'], [])
+        doc2 = generate_document(None, ['=key_value_0'], ['0=VALUE_RELEVANT_v_1'], ['0=some1'], [])
+        doc3 = generate_document(None, ['=key_value_0'], ['1=VALUE_RELEVANT_v_0'], ['1=some0'], [])
+        doc4 = generate_document(None, ['=key_value_0'], ['1=VALUE_RELEVANT_v_1'], ['1=some1'], [])
+
+        analyzed_documents = AnalyzeDocuments(TheDocAnalyzer(), [doc1,doc2,doc3,doc4])
         self.assertEqual({'PART_OF_DOC_KEY=key_value_0'}, analyzed_documents.get_keys())
         self.assertEqual({
             'docs_count': 4, 'field_usage': {'EXISTENCE_RELEVANT0': 2, 'EXISTENCE_RELEVANT1': 2,
